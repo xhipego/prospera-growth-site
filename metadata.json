@@ -1,0 +1,6 @@
+{
+  "name": "Prospera Growth — Bulk Mineral Rail & Port Logistics",
+  "description": "Mine-to-port bulk mineral rail aggregation, siding management, and FOB export logistics for chrome, coal, vanadium, and magnetite producers in Southern Africa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
