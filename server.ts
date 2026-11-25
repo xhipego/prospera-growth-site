@@ -173,6 +173,7 @@ const ALLOWED_MEDIA_SLOTS = new Set([
 
 const VIDEO_MIME_EXT: Record<string, string> = {
   'video/mp4': 'mp4',
+  'video/x-m4v': 'mp4',
   'video/webm': 'webm',
   'video/quicktime': 'mov',
 };
@@ -183,13 +184,13 @@ const IMAGE_MIME_EXT: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/avif': 'avif',
 };
 
 async function startServer() {
   const app = express();
-  app.use(express.json({ limit: '64kb' }));
 
-  app.post('/api/quote', async (req, res) => {
+  app.post('/api/quote', express.json({ limit: '64kb' }), async (req, res) => {
     const fullName = cleanSingleLine(req.body?.fullName, 120);
     const company = cleanSingleLine(req.body?.company, 150);
     const email = cleanSingleLine(req.body?.email, 160);
@@ -255,81 +256,220 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== 'production') {
-    app.post(
-      '/api/persist-media',
-      express.raw({
-        type: [...Object.keys(VIDEO_MIME_EXT), ...Object.keys(IMAGE_MIME_EXT)],
-        limit: '150mb',
-      }),
-      (req, res) => {
-        if (req.get('x-requested-with') !== 'ProsperaMediaSync') {
-          res.status(403).json({ ok: false, error: 'Missing required sync header.' });
-          return;
+    const mediaDir = path.resolve(__dirname, 'public', 'assets', 'media');
+    fs.mkdirSync(mediaDir, { recursive: true });
+
+    // Reconcile any custom_<slot>.<ext> files already saved on disk into media-config.json
+    const configPathOnBoot = path.resolve(mediaDir, 'media-config.json');
+    if (configPathOnBoot.startsWith(mediaDir + path.sep)) {
+      let bootConfig: Record<string, unknown> = {};
+      if (fs.existsSync(configPathOnBoot)) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(configPathOnBoot, 'utf-8'));
+          if (parsed && typeof parsed === 'object') {
+            bootConfig = parsed as Record<string, unknown>;
+          }
+        } catch {
+          bootConfig = {};
         }
+      }
 
-        const slot = typeof req.query.slot === 'string' ? req.query.slot.trim() : '';
-        if (!ALLOWED_MEDIA_SLOTS.has(slot)) {
-          res.status(400).json({ ok: false, error: 'Invalid media slot.' });
-          return;
+      const reconciled: Record<string, unknown> = {
+        locked: Boolean(bootConfig.locked),
+      };
+      for (const key of ALLOWED_MEDIA_SLOTS) {
+        if (typeof bootConfig[key] === 'string') {
+          reconciled[key] = bootConfig[key];
         }
+      }
 
-        const contentTypeHeader = (req.get('content-type') || '').split(';')[0].trim().toLowerCase();
-        const ext =
-          slot === 'heroVideo'
-            ? VIDEO_MIME_EXT[contentTypeHeader]
-            : IMAGE_MIME_EXT[contentTypeHeader];
-
-        if (!ext) {
-          res.status(400).json({ ok: false, error: 'Unsupported media format for slot.' });
-          return;
+      const validExts = new Set([...Object.values(VIDEO_MIME_EXT), ...Object.values(IMAGE_MIME_EXT)]);
+      const filesOnDisk = fs.readdirSync(mediaDir);
+      for (const fileName of filesOnDisk) {
+        const match = /^custom_([A-Za-z0-9]+)\.([a-z0-9]+)$/.exec(fileName);
+        if (!match) continue;
+        const [, slotKey, ext] = match;
+        if (ALLOWED_MEDIA_SLOTS.has(slotKey) && validExts.has(ext)) {
+          reconciled[slotKey] = `/assets/media/${fileName}`;
         }
+      }
+      fs.writeFileSync(configPathOnBoot, JSON.stringify(reconciled, null, 2) + '\n', 'utf-8');
+    }
 
-        if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
-          res.status(400).json({ ok: false, error: 'Empty media payload.' });
-          return;
-        }
+    // Serve media files with full HTTP Range (206) support and no stale dev cache
+    app.use(
+      '/assets/media',
+      express.static(mediaDir, {
+        etag: false,
+        lastModified: true,
+        setHeaders: (res) => {
+          res.setHeader('Cache-Control', 'no-store');
+        },
+      })
+    );
 
-        const mediaDir = path.resolve(__dirname, 'public', 'assets', 'media');
-        fs.mkdirSync(mediaDir, { recursive: true });
+    app.post('/api/persist-media', express.json({ limit: '4mb' }), (req, res) => {
+      const slot = typeof req.body?.slot === 'string' ? req.body.slot.trim() : '';
+      if (!ALLOWED_MEDIA_SLOTS.has(slot)) {
+        res.status(400).json({ ok: false, error: 'Invalid media slot.' });
+        return;
+      }
 
-        const targetFileName = `custom_${slot}.${ext}`;
-        const targetPath = path.resolve(mediaDir, targetFileName);
-        if (!targetPath.startsWith(mediaDir + path.sep)) {
-          res.status(400).json({ ok: false, error: 'Invalid target path.' });
-          return;
-        }
+      const mediaType =
+        typeof req.body?.mimeType === 'string'
+          ? req.body.mimeType.split(';')[0].trim().toLowerCase()
+          : '';
+      const ext =
+        slot === 'heroVideo' ? VIDEO_MIME_EXT[mediaType] : IMAGE_MIME_EXT[mediaType];
 
-        const configPath = path.resolve(mediaDir, 'media-config.json');
-        if (!configPath.startsWith(mediaDir + path.sep)) {
-          res.status(400).json({ ok: false, error: 'Invalid config path.' });
-          return;
-        }
+      if (!ext) {
+        res.status(400).json({ ok: false, error: 'Unsupported media format for slot.' });
+        return;
+      }
 
-        fs.writeFileSync(targetPath, req.body);
+      const chunkIndex = Number(req.body?.chunkIndex ?? 0);
+      const totalChunks = Number(req.body?.totalChunks ?? 1);
+      const chunkBase64 = typeof req.body?.chunkBase64 === 'string' ? req.body.chunkBase64 : '';
 
-        let config: Record<string, string> = {};
-        if (fs.existsSync(configPath)) {
-          try {
-            const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            if (parsed && typeof parsed === 'object') {
-              for (const key of ALLOWED_MEDIA_SLOTS) {
-                if (typeof parsed[key] === 'string') {
-                  config[key] = parsed[key];
-                }
-              }
+      if (
+        !Number.isInteger(chunkIndex) ||
+        !Number.isInteger(totalChunks) ||
+        totalChunks < 1 ||
+        totalChunks > 250 ||
+        chunkIndex < 0 ||
+        chunkIndex >= totalChunks ||
+        !chunkBase64
+      ) {
+        res.status(400).json({ ok: false, error: 'Invalid media chunk payload.' });
+        return;
+      }
+
+      const chunkBuffer = Buffer.from(chunkBase64, 'base64');
+      if (chunkBuffer.length === 0 || chunkBuffer.length > 2.5 * 1024 * 1024) {
+        res.status(400).json({ ok: false, error: 'Invalid decoded chunk size.' });
+        return;
+      }
+
+      const targetFileName = `custom_${slot}.${ext}`;
+      const targetPath = path.resolve(mediaDir, targetFileName);
+      if (!targetPath.startsWith(mediaDir + path.sep)) {
+        res.status(400).json({ ok: false, error: 'Invalid target path.' });
+        return;
+      }
+
+      const configPath = path.resolve(mediaDir, 'media-config.json');
+      if (!configPath.startsWith(mediaDir + path.sep)) {
+        res.status(400).json({ ok: false, error: 'Invalid config path.' });
+        return;
+      }
+
+      const partPath = path.resolve(mediaDir, `.uploading_${slot}.${ext}.part`);
+      if (!partPath.startsWith(mediaDir + path.sep)) {
+        res.status(400).json({ ok: false, error: 'Invalid staging path.' });
+        return;
+      }
+
+      if (totalChunks === 1) {
+        const allowedExts = new Set(
+          Object.values(slot === 'heroVideo' ? VIDEO_MIME_EXT : IMAGE_MIME_EXT)
+        );
+        for (const oldExt of allowedExts) {
+          if (oldExt !== ext) {
+            const stalePath = path.resolve(mediaDir, `custom_${slot}.${oldExt}`);
+            if (stalePath.startsWith(mediaDir + path.sep) && fs.existsSync(stalePath)) {
+              fs.unlinkSync(stalePath);
             }
-          } catch {
-            config = {};
           }
         }
+        fs.writeFileSync(targetPath, chunkBuffer);
+      } else {
+        if (chunkIndex === 0) {
+          fs.writeFileSync(partPath, chunkBuffer);
+        } else {
+          if (!fs.existsSync(partPath)) {
+            res.status(400).json({ ok: false, error: 'Missing initial media chunk.' });
+            return;
+          }
+          fs.appendFileSync(partPath, chunkBuffer);
+        }
 
-        const publicPath = `/assets/media/${targetFileName}`;
-        config[slot] = publicPath;
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+        if (chunkIndex < totalChunks - 1) {
+          res.status(200).json({ ok: true, partial: true, chunkIndex, totalChunks });
+          return;
+        }
 
-        res.status(200).json({ ok: true, slot, path: publicPath });
+        const allowedExts = new Set(
+          Object.values(slot === 'heroVideo' ? VIDEO_MIME_EXT : IMAGE_MIME_EXT)
+        );
+        for (const oldExt of allowedExts) {
+          if (oldExt !== ext) {
+            const stalePath = path.resolve(mediaDir, `custom_${slot}.${oldExt}`);
+            if (stalePath.startsWith(mediaDir + path.sep) && fs.existsSync(stalePath)) {
+              fs.unlinkSync(stalePath);
+            }
+          }
+        }
+        fs.renameSync(partPath, targetPath);
       }
-    );
+
+      let existingConfig: Record<string, unknown> = {};
+      if (fs.existsSync(configPath)) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          if (parsed && typeof parsed === 'object') {
+            existingConfig = parsed as Record<string, unknown>;
+          }
+        } catch {
+          existingConfig = {};
+        }
+      }
+
+      const nextConfig: Record<string, unknown> = {
+        locked: Boolean(existingConfig.locked),
+      };
+      for (const key of ALLOWED_MEDIA_SLOTS) {
+        if (typeof existingConfig[key] === 'string') {
+          nextConfig[key] = existingConfig[key];
+        }
+      }
+      const publicPath = `/assets/media/${targetFileName}`;
+      nextConfig[slot] = publicPath;
+
+      fs.writeFileSync(configPath, JSON.stringify(nextConfig, null, 2) + '\n', 'utf-8');
+
+      const stats = fs.statSync(targetPath);
+      res.status(200).json({ ok: true, slot, path: publicPath, sizeBytes: stats.size });
+    });
+
+    app.post('/api/lock-media', express.json({ limit: '64kb' }), (_req, res) => {
+      const configPath = path.resolve(mediaDir, 'media-config.json');
+      if (!configPath.startsWith(mediaDir + path.sep)) {
+        res.status(400).json({ ok: false, error: 'Invalid config path.' });
+        return;
+      }
+
+      let existingConfig: Record<string, unknown> = {};
+      if (fs.existsSync(configPath)) {
+        try {
+          const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          if (parsed && typeof parsed === 'object') {
+            existingConfig = parsed as Record<string, unknown>;
+          }
+        } catch {
+          existingConfig = {};
+        }
+      }
+
+      const nextConfig: Record<string, unknown> = { locked: true };
+      for (const key of ALLOWED_MEDIA_SLOTS) {
+        if (typeof existingConfig[key] === 'string') {
+          nextConfig[key] = existingConfig[key];
+        }
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(nextConfig, null, 2) + '\n', 'utf-8');
+      res.status(200).json({ ok: true, locked: true });
+    });
 
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

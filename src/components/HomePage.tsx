@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Camera, Film } from 'lucide-react';
 import {
   AGGREGATION_BENEFITS,
   CAPABILITIES,
@@ -8,16 +8,22 @@ import {
   PROCESS_STEPS,
   WHO_WE_ARE_PILLARS,
 } from '../data/companyProfile';
-import { MediaMap } from '../lib/mediaStore';
+import { MediaMap, MediaSlotKey } from '../lib/mediaStore';
 import { PageId } from './Navbar';
 
 interface HomePageProps {
   media: MediaMap;
+  canEdit: boolean;
+  savingSlots: Partial<Record<MediaSlotKey, number | boolean>>;
+  onUploadMedia: (key: MediaSlotKey, file: File) => Promise<void>;
   onNavigate: (page: PageId, sectionId?: string) => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
   media,
+  canEdit,
+  savingSlots,
+  onUploadMedia,
   onNavigate,
 }) => {
   const hasHeroVideo = Boolean(media.heroVideo.url);
@@ -105,37 +111,67 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
 
           <div className="relative z-10 w-full px-6 sm:px-12 lg:px-14 pt-24 pb-10 sm:pb-14">
-            <div className="max-w-3xl">
-              <p className="text-sm font-medium text-[#DFC076] mb-4">
-                Chrome · Coal · Vanadium · Magnetite
-              </p>
-              <h1
-                className="font-display text-[#F6F4EF] font-semibold tracking-tight leading-[1.04]"
-                style={{ fontSize: 'clamp(2.45rem, 4.6vw, 4.3rem)', textWrap: 'balance' }}
-              >
-                Get your minerals off trucks and onto trains.
-              </h1>
-              <p className="mt-5 text-lg sm:text-xl text-[#D8DFDA] max-w-2xl leading-relaxed">
-                Small producers. Full trains. Mine-to-port supply chains across Richards Bay and Maputo.
-              </p>
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+              <div className="max-w-3xl">
+                <p className="text-sm font-medium text-[#DFC076] mb-4">
+                  Chrome · Coal · Vanadium · Magnetite
+                </p>
+                <h1
+                  className="font-display text-[#F6F4EF] font-semibold tracking-tight leading-[1.04]"
+                  style={{ fontSize: 'clamp(2.45rem, 4.6vw, 4.3rem)', textWrap: 'balance' }}
+                >
+                  Get your minerals off trucks and onto trains.
+                </h1>
+                <p className="mt-5 text-lg sm:text-xl text-[#D8DFDA] max-w-2xl leading-relaxed">
+                  Small producers. Full trains. Mine-to-port supply chains across Richards Bay and Maputo.
+                </p>
 
-              <div className="mt-8 flex flex-wrap items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => onNavigate('corridors')}
-                  className="inline-flex items-center gap-2.5 px-6 py-3.5 text-sm font-semibold bg-[#B38D3B] text-[#111E16] rounded-xl hover:bg-[#C69F49] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F6F4EF]"
-                >
-                  <span>Corridors &amp; Track Record</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('corridors', 'contact')}
-                  className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold text-[#F6F4EF] border border-[#F6F4EF]/35 rounded-xl hover:border-[#F6F4EF]/80 hover:bg-white/10 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                >
-                  Send Your Tonnage
-                </button>
+                <div className="mt-8 flex flex-wrap items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('corridors')}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 text-sm font-semibold bg-[#B38D3B] text-[#111E16] rounded-xl hover:bg-[#C69F49] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#F6F4EF]"
+                  >
+                    <span>Corridors &amp; Track Record</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('corridors', 'contact')}
+                    className="inline-flex items-center gap-2 px-6 py-3.5 text-sm font-semibold text-[#F6F4EF] border border-[#F6F4EF]/35 rounded-xl hover:border-[#F6F4EF]/80 hover:bg-white/10 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    Send Your Tonnage
+                  </button>
+                </div>
               </div>
+
+              {canEdit && (
+                <div className="shrink-0">
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-semibold bg-[#F6F4EF]/95 text-[#142119] rounded-xl hover:bg-[#DFC076] transition-colors cursor-pointer whitespace-nowrap shadow-sm">
+                    <Film className="w-3.5 h-3.5" />
+                    <span>
+                      {typeof savingSlots.heroVideo === 'number'
+                        ? `Saving Video (${savingSlots.heroVideo}%)...`
+                        : savingSlots.heroVideo
+                        ? 'Saving Video...'
+                        : hasHeroVideo
+                        ? 'Change Background Video'
+                        : 'Add Background Video'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,video/x-m4v,video/*"
+                      className="hidden"
+                      disabled={Boolean(savingSlots.heroVideo)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUploadMedia('heroVideo', file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -243,11 +279,18 @@ export const HomePage: React.FC<HomePageProps> = ({
             >
               Rails, sidings and export terminals
             </h2>
+            {canEdit && (
+              <p className="mt-2 text-base text-[#4A564E]">
+                Click Change Photo on any tile to upload from your laptop and save permanently.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {GALLERY_PHOTOS.map((slot) => {
               const asset = media[slot.key];
+              const slotSaving = savingSlots[slot.key];
+              const isSaving = Boolean(slotSaving);
               return (
                 <div
                   key={slot.key}
@@ -259,6 +302,37 @@ export const HomePage: React.FC<HomePageProps> = ({
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                   />
+                  {canEdit && (
+                    <>
+                      <div
+                        className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-colors"
+                        aria-hidden="true"
+                      />
+                      <label className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#F6F4EF]/95 text-[#142119] rounded-lg opacity-95 hover:bg-[#DFC076] transition-colors cursor-pointer whitespace-nowrap shadow-sm">
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>
+                          {typeof slotSaving === 'number'
+                            ? `Saving (${slotSaving}%)`
+                            : isSaving
+                            ? 'Saving...'
+                            : asset.isCustom
+                            ? 'Saved · Replace'
+                            : 'Change Photo'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isSaving}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) onUploadMedia(slot.key, file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                    </>
+                  )}
                 </div>
               );
             })}

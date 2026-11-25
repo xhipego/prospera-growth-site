@@ -1,9 +1,10 @@
 {
-  "heroVideo": "",
+  "locked": false,
+  "heroVideo": "/assets/media/custom_heroVideo.mp4",
   "companyLogo": "/assets/media/company_logo.png",
   "mdPortrait": "/assets/media/md_portrait.jpg",
-  "chromeRail1": "/assets/media/chrome_rail_1.jpg",
-  "chromeRail2": "/assets/media/chrome_rail_2.jpg",
+  "chromeRail1": "/assets/media/custom_chromeRail1.jpg",
+  "chromeRail2": "/assets/media/custom_chromeRail2.jpg",
   "chromeRail3": "/assets/media/chrome_rail_3.jpg",
   "chromeRail4": "/assets/media/chrome_rail_4.jpg",
   "chromeRail5": "/src/assets/images/rail_wagons_chrome_5_1795550000523.jpg",

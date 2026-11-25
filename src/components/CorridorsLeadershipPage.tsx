@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { ArrowLeft, Camera, CheckCircle2, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import {
   CONTACT_INFO,
   CORRIDOR_ROUTES,
   LEADERSHIP_PROFILE,
   TRACK_RECORD,
 } from '../data/companyProfile';
-import { MediaMap } from '../lib/mediaStore';
+import { MediaMap, MediaSlotKey } from '../lib/mediaStore';
 import { PageId } from './Navbar';
 
 interface CorridorsLeadershipPageProps {
   media: MediaMap;
+  canEdit: boolean;
+  savingSlots: Partial<Record<MediaSlotKey, number | boolean>>;
+  onUploadMedia: (key: MediaSlotKey, file: File) => Promise<void>;
   onNavigate: (page: PageId, sectionId?: string) => void;
 }
 
@@ -18,6 +21,9 @@ const WHATSAPP_DIGITS = CONTACT_INFO.phone.replace(/\D/g, '');
 
 export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = ({
   media,
+  canEdit,
+  savingSlots,
+  onUploadMedia,
   onNavigate,
 }) => {
   const [selectedRouteId, setSelectedRouteId] = useState(CORRIDOR_ROUTES[0].id);
@@ -296,6 +302,29 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                 className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent"
                 aria-hidden="true"
               />
+              {canEdit && (
+                <label className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#F6F4EF]/95 text-[#142119] rounded-lg hover:bg-[#DFC076] transition-colors cursor-pointer whitespace-nowrap shadow-sm">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>
+                    {savingSlots.chromeRail4
+                      ? 'Saving...'
+                      : media.chromeRail4.isCustom
+                      ? 'Saved · Replace'
+                      : 'Change Photo'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={Boolean(savingSlots.chromeRail4)}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onUploadMedia('chromeRail4', file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
               <div className="absolute bottom-5 left-5 right-5 text-[#F6F4EF]">
                 <p className="font-display text-xl font-semibold">{activeRoute.terminal}</p>
                 <p className="mt-1 text-xs text-[#D8DFDA] leading-relaxed">
@@ -419,6 +448,29 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                   className="absolute inset-0 bg-gradient-to-t from-[#0D1E13]/75 via-transparent to-transparent"
                   aria-hidden="true"
                 />
+                {canEdit && (
+                  <label className="absolute top-4 right-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#F6F4EF]/95 text-[#142119] rounded-lg hover:bg-[#DFC076] transition-colors cursor-pointer whitespace-nowrap shadow-sm">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>
+                      {savingSlots.mdPortrait
+                        ? 'Saving...'
+                        : media.mdPortrait.isCustom
+                        ? 'Saved · Replace'
+                        : 'Change Portrait'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={Boolean(savingSlots.mdPortrait)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUploadMedia('mdPortrait', file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
                 <div className="absolute bottom-5 left-5 right-5">
                   <p className="font-display text-base font-semibold text-[#F6F4EF]">
                     {LEADERSHIP_PROFILE.name}
