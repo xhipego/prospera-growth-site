@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { ArrowRight } from 'lucide-react';
 import {
   AGGREGATION_BENEFITS,
@@ -28,26 +28,50 @@ export const HomePage: React.FC<HomePageProps> = ({
     setVideoError(false);
   }, [media.heroVideo.url]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const video = videoRef.current;
     if (!video || !hasHeroVideo) return;
 
+    video.setAttribute('muted', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('loop', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
     video.defaultMuted = true;
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
+  }, [hasHeroVideo, media.heroVideo.url]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !hasHeroVideo) return;
+
+    let playInFlight = false;
 
     const ensurePlaying = () => {
-      if (!document.hidden && video.paused) {
-        video.muted = true;
-        video.play().catch(() => {});
+      if (document.hidden || !video.paused || video.seeking || playInFlight) {
+        return;
+      }
+      video.defaultMuted = true;
+      video.muted = true;
+      playInFlight = true;
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+          .catch(() => {})
+          .finally(() => {
+            playInFlight = false;
+          });
+      } else {
+        playInFlight = false;
       }
     };
 
     const handleEnded = () => {
       video.currentTime = 0;
       video.muted = true;
-      video.play().catch(() => {});
+      ensurePlaying();
     };
 
     const handleVisibility = () => {
@@ -56,20 +80,55 @@ export const HomePage: React.FC<HomePageProps> = ({
       }
     };
 
+    const handleInteraction = () => {
+      ensurePlaying();
+    };
+
     ensurePlaying();
 
+    video.addEventListener('loadedmetadata', ensurePlaying);
     video.addEventListener('loadeddata', ensurePlaying);
     video.addEventListener('canplay', ensurePlaying);
+    video.addEventListener('canplaythrough', ensurePlaying);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('pause', ensurePlaying);
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pointerdown', handleInteraction, { passive: true });
+    window.addEventListener('touchstart', handleInteraction, { passive: true });
+    window.addEventListener('keydown', handleInteraction, { passive: true });
+
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            ensurePlaying();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(video);
+    }
+
+    const watchdog = window.setInterval(() => {
+      if (!document.hidden && video.paused && video.readyState >= 2) {
+        ensurePlaying();
+      }
+    }, 1500);
 
     return () => {
+      video.removeEventListener('loadedmetadata', ensurePlaying);
       video.removeEventListener('loadeddata', ensurePlaying);
       video.removeEventListener('canplay', ensurePlaying);
+      video.removeEventListener('canplaythrough', ensurePlaying);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('pause', ensurePlaying);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pointerdown', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+      observer?.disconnect();
+      window.clearInterval(watchdog);
     };
   }, [hasHeroVideo, media.heroVideo.url]);
 
@@ -83,7 +142,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               <video
                 ref={videoRef}
                 key={media.heroVideo.url}
-                src={media.heroVideo.url}
                 poster={media.chromeRail1.url}
                 autoPlay
                 muted
@@ -92,7 +150,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                 preload="auto"
                 onError={() => setVideoError(true)}
                 className="w-full h-full object-cover"
-              />
+              >
+                <source src={media.heroVideo.url} type="video/mp4" />
+              </video>
             ) : (
               <img
                 src={media.chromeRail1.url}
