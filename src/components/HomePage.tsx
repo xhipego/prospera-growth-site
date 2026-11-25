@@ -20,12 +20,17 @@ export const HomePage: React.FC<HomePageProps> = ({
   media,
   onNavigate,
 }) => {
-  const hasHeroVideo = Boolean(media.heroVideo.url);
+  const [videoError, setVideoError] = React.useState(false);
+  const hasHeroVideo = Boolean(media.heroVideo.url) && !videoError;
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
+    setVideoError(false);
+  }, [media.heroVideo.url]);
+
+  useEffect(() => {
     const video = videoRef.current;
-    if (!video || !media.heroVideo.url) return;
+    if (!video || !hasHeroVideo) return;
 
     video.defaultMuted = true;
     video.muted = true;
@@ -66,7 +71,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       video.removeEventListener('pause', ensurePlaying);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [media.heroVideo.url]);
+  }, [hasHeroVideo, media.heroVideo.url]);
 
   return (
     <div>
@@ -79,11 +84,13 @@ export const HomePage: React.FC<HomePageProps> = ({
                 ref={videoRef}
                 key={media.heroVideo.url}
                 src={media.heroVideo.url}
+                poster={media.chromeRail1.url}
                 autoPlay
                 muted
                 loop
                 playsInline
                 preload="auto"
+                onError={() => setVideoError(true)}
                 className="w-full h-full object-cover"
               />
             ) : (
