@@ -142,7 +142,6 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                     <tr className="bg-[#EFECE3] border-b border-[#DED9CC] text-xs font-semibold text-[#354239]">
                       <th className="py-4 px-6">Route</th>
                       <th className="py-4 px-6">Destination</th>
-                      <th className="py-4 px-6">Transnet pricing</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EAE5D9] text-sm">
@@ -168,22 +167,6 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                             </div>
                           </td>
                           <td className="py-5 px-6 text-[#354239]">{item.destination}</td>
-                          <td className="py-5 px-6 text-sm font-sans tabular-nums text-[#354239] min-w-[240px]">
-                            <span
-                              className={
-                                item.pricingTone === 'binding'
-                                  ? 'font-semibold text-[#163A22]'
-                                  : 'font-semibold text-[#82631F]'
-                              }
-                            >
-                              {item.pricingStatus.split(',')[0]}
-                            </span>
-                            {item.pricingStatus.includes(',') && (
-                              <span className="text-[#4A564E]">
-                                ,{item.pricingStatus.split(',').slice(1).join(',')}
-                              </span>
-                            )}
-                          </td>
                         </tr>
                       );
                     })}
@@ -307,35 +290,29 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
         </div>
       </section>
 
-      {/* 2. TRACK RECORD — ASYMMETRIC PROOF SHOWCASE */}
+      {/* 2. TRACK RECORD — A NEW COMPANY, BUILT ON PROVEN EXPERIENCE */}
       <section className="py-16 md:py-24 bg-[#EFECE3]">
         <div className="max-w-[1280px] mx-auto px-5 sm:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-            <div>
-              <h2
-                className="font-display text-3xl sm:text-4xl font-semibold text-[#142119] tracking-tight"
-                style={{ textWrap: 'balance' }}
-              >
-                Proof behind every solution
-              </h2>
-              <p className="mt-2.5 text-base text-[#4A564E] max-w-xl">
-                Verified rail accounts, siding tenders, capacity recoveries, and fleet growth delivered across bulk mineral corridors.
-              </p>
-            </div>
+          <div className="mb-12">
+            <p className="text-xs font-semibold tracking-widest uppercase text-[#82631F] mb-2">
+              Track record
+            </p>
+            <h2
+              className="font-display text-3xl sm:text-4xl font-semibold text-[#142119] tracking-tight"
+              style={{ textWrap: 'balance' }}
+            >
+              A new company, built on proven experience
+            </h2>
+            <p className="mt-2.5 text-base text-[#4A564E] max-w-2xl">
+              Prospera is new. The experience behind it isn’t: the results below come from our founder’s earlier work.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
             {TRACK_RECORD.map((item, idx) => {
-              const isForestAnchor = idx === 1; // R1.2M a month
-              const isGoldAnchor = idx === 4; // 3 Transnet offers
-              const colSpan =
-                idx === 1
-                  ? 'md:col-span-5'
-                  : idx === 0
-                  ? 'md:col-span-4'
-                  : idx === 2
-                  ? 'md:col-span-3'
-                  : 'md:col-span-4';
+              const isProsperaToday = idx === 0;
+              const isForestAnchor = idx === 1;
+              const colSpan = idx < 2 ? 'md:col-span-6' : 'md:col-span-4';
 
               return (
                 <div
@@ -343,42 +320,27 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                   className={`${colSpan} rounded-3xl p-7 sm:p-8 flex flex-col justify-between transition-transform duration-200 hover:-translate-y-1 ${
                     isForestAnchor
                       ? 'bg-[#163A22] text-[#F6F4EF]'
-                      : isGoldAnchor
+                      : isProsperaToday
                       ? 'bg-[#B38D3B] text-[#142119]'
                       : 'bg-white text-[#142119] border border-[#DED9CC]'
                   }`}
                 >
                   <div>
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span
-                        className={`font-semibold ${
-                          isForestAnchor
-                            ? 'text-[#DFC076]'
-                            : isGoldAnchor
-                            ? 'text-[#142119]/80'
-                            : 'text-[#82631F]'
-                        }`}
-                      >
-                        {item.category}
-                      </span>
-                      <span
-                        className={
-                          isForestAnchor
-                            ? 'text-[#B8C7BD]'
-                            : isGoldAnchor
-                            ? 'text-[#142119]/75'
-                            : 'text-[#626E65]'
-                        }
-                      >
-                        {item.attribution}
-                      </span>
-                    </div>
+                    <span
+                      className={`text-xs font-semibold uppercase tracking-wider ${
+                        isForestAnchor
+                          ? 'text-[#DFC076]'
+                          : isProsperaToday
+                          ? 'text-[#142119]/80'
+                          : 'text-[#82631F]'
+                      }`}
+                    >
+                      {item.category}
+                    </span>
 
                     <h3
-                      className={`mt-5 font-display font-semibold tracking-tight tabular-nums ${
-                        isForestAnchor || isGoldAnchor
-                          ? 'text-3xl sm:text-4xl'
-                          : 'text-2xl sm:text-[1.75rem]'
+                      className={`mt-4 font-display font-semibold tracking-tight tabular-nums ${
+                        idx < 2 ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
                       }`}
                     >
                       {item.headline}
@@ -389,7 +351,7 @@ export const CorridorsLeadershipPage: React.FC<CorridorsLeadershipPageProps> = (
                     className={`mt-5 pt-4 border-t text-sm sm:text-base leading-relaxed ${
                       isForestAnchor
                         ? 'border-white/15 text-[#D8DFDA]'
-                        : isGoldAnchor
+                        : isProsperaToday
                         ? 'border-[#142119]/15 text-[#142119]/90'
                         : 'border-[#EAE5D9] text-[#4A564E]'
                     }`}

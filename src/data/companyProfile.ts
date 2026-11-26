@@ -166,62 +166,58 @@ export const CORRIDOR_ROUTES: CorridorRoute[] = [
   },
 ];
 
-export const TRACK_RECORD = [
+export interface TrackRecordItem {
+  category: string;
+  headline: string;
+  detail: string;
+}
+
+export const TRACK_RECORD: TrackRecordItem[] = [
   {
-    category: 'Aggregation',
-    headline: 'Multi-client account',
-    detail: 'Several producers on one coal rail account, their trains scheduled.',
-    attribution: 'Sekwala',
+    category: 'Prospera today',
+    headline: 'First mandate signed',
+    detail:
+      'Chrome concentrate, Pendoring to Richards Bay. In talks with several junior miners and trading houses to capacitate their exports.',
   },
   {
     category: 'Capacity',
-    headline: 'R1.2M a month',
-    detail: 'Recovered by filling idle rail and stockpile capacity.',
-    attribution: 'Sekwala',
+    headline: 'R1.2M a month · R14.4M a year',
+    detail:
+      'Revenue recovered on a single account by securing and filling idle rail and stockpile capacity at sidings and terminals.',
+  },
+  {
+    category: 'Aggregation',
+    headline: 'Shared rail accounts',
+    detail: 'Moved several producers’ tonnage on one account, on scheduled trains.',
   },
   {
     category: 'Sidings',
-    headline: '3 siding tenders',
-    detail: 'Co-led three rail siding tender submissions.',
-    attribution: 'Sekwala',
-  },
-  {
-    category: 'Rail accounts',
-    headline: 'Account from zero',
-    detail: 'Transnet rail account opened from scratch, capacity now being secured.',
-    attribution: 'ITandE, consulting',
-  },
-  {
-    category: 'Rail pricing',
-    headline: '3 Transnet offers',
-    detail: 'Binding and feasibility pricing in Prospera’s name, Richards Bay and Maputo.',
-    attribution: 'Prospera Growth',
+    headline: 'Siding projects',
+    detail: 'Structured and submitted rail siding tenders.',
   },
   {
     category: 'Trucking',
-    headline: '2 to 8 trucks',
-    detail: 'Bulk fleet grown fourfold, revenue doubled in under 18 months.',
-    attribution: 'Dominiques',
+    headline: '4× fleet growth',
+    detail: 'Grew a bulk trucking fleet fourfold and doubled its revenue.',
   },
 ];
 
 export const LEADERSHIP_PROFILE = {
   name: 'Thulo Moletsane',
-  title: 'Founder and Managing Director',
+  title: 'Founder, CEO and Managing Director',
   summary:
-    'Thulo builds rail routes for producers who can’t get onto the trains alone. He knows the Transnet process from the inside: rail accounts, capacity applications, sidings and terminal access.',
+    'Thulo builds rail routes and stockpile capacity for producers who can’t get onto the trains alone. He has years of hands-on experience with Transnet’s commercial process: rail accounts, capacity applications, sidings and terminal access.',
   education: 'BCom Honours in Economics, University of Cape Town',
   highlights: [
-    'Opened Transnet rail accounts from scratch and secured train capacity (ITandE, consulting)',
-    'Ran a multi-client coal rail account, bringing producers on and scheduling their trains (Sekwala Mining and Logistics)',
-    'Recovered R1.2M a month by filling rail and stockpile capacity, and co-led three rail siding tenders',
-    'Scaled a bulk trucking fleet from 2 to 8 trucks (Dominiques Logistics)',
+    'Secures rail and stockpile capacity at sidings and terminals for clients',
+    'Runs shared rail accounts that move several producers’ tonnage on scheduled trains',
+    'Brings hands-on bulk trucking experience to the first mile',
   ],
 };
 
 export const CONTACT_INFO = {
   companyLegal: 'Prospera Growth (Pty) Ltd',
-  contactPerson: 'Thulo Moletsane, Founder and MD',
+  contactPerson: 'Thulo Moletsane, CEO and MD',
   phone: '+27 81 465 9033',
   email: 'thulo@prosperagrowth.co.za',
   office: '36 Woodlands Avenue, Pecanwood Estate, Hartbeespoort',
